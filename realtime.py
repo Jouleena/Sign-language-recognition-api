@@ -10,7 +10,7 @@ import tensorflow as tf
 MODEL_PATH      = "model.h5"
 LABELS_PATH     = "labels.json"
 FRAMES_COUNT    = 60
-CONFIDENCE_MIN  = 0.40   # only show prediction if confidence >= 40%
+CONFIDENCE_MIN  = 0.70   # only show prediction if confidence >= 40%
 SMOOTH_WINDOW   = 5      # smooth predictions over last 5 results
 
 
