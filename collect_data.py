@@ -6,7 +6,7 @@ import time
 
 #  Settings
 
-WORDS        = ["hello", "thank_you", "yes", "no", "please" ] # , "water", "help", "stop" , "name" , "good"
+WORDS        = ["hello", "thank_you", "yes", "no" , "water"]
 VIDEOS_COUNT = 35
 FRAMES_COUNT = 60
 DATASET_PATH = "dataset"
@@ -24,7 +24,7 @@ mp_hands   = mp.solutions.hands
 mp_drawing = mp.solutions.drawing_utils
 hands      = mp_hands.Hands(
     static_image_mode=False,
-    max_num_hands=1,
+    max_num_hands=2,
     min_detection_confidence=0.7,
     min_tracking_confidence=0.7
 )

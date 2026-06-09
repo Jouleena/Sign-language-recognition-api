@@ -11,9 +11,9 @@ from tensorflow.keras.layers import LSTM, Dense, Dropout
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from tensorflow.keras.utils import to_categorical
 
-
+# ─────────────────────────────────────────
 #  Settings
-
+# ─────────────────────────────────────────
 DATASET_PATH = "dataset"
 MODEL_PATH   = "model.h5"
 LABELS_PATH  = "labels.json"
@@ -21,9 +21,9 @@ FRAMES_COUNT = 60
 EPOCHS       = 50
 BATCH_SIZE   = 16
 
-
+# ─────────────────────────────────────────
 #  Step 1 — Load data
-
+# ─────────────────────────────────────────
 print("Loading data...")
 
 WORDS     = sorted(os.listdir(DATASET_PATH))
@@ -52,24 +52,60 @@ for word in WORDS:
 X = np.array(X)
 y = np.array(y)
 
-print(f"  Total samples: {len(X)}")
-print(f"  X shape: {X.shape}")
+print(f"  Total samples before augmentation: {len(X)}")
 
-
+# ─────────────────────────────────────────
 #  Step 2 — Normalize landmarks
-
+# ─────────────────────────────────────────
 for i in range(len(X)):
     for f in range(FRAMES_COUNT):
-        wrist         = X[i, f, :3].copy()
+        wrist           = X[i, f, :3].copy()
         X[i, f, 0::3] -= wrist[0]
         X[i, f, 1::3] -= wrist[1]
         X[i, f, 2::3] -= wrist[2]
 
 print("  Normalization done")
 
+# ─────────────────────────────────────────
+#  Step 3 — Augmentation
+# ─────────────────────────────────────────
+def augment(sequence):
+    augmented = []
 
-#  Step 3 — Split data
+    # Gaussian Noise — simulates natural hand shakiness
+    noise = np.random.normal(0, 0.005, sequence.shape)
+    augmented.append(sequence + noise)
 
+    # Hand Flip — simulates left hand
+    flipped           = sequence.copy()
+    flipped[:, 0::3]  = -flipped[:, 0::3]
+    augmented.append(flipped)
+
+    # Time Scaling — simulates faster signing
+    fast = sequence[::2]
+    fast = np.resize(fast, sequence.shape)
+    augmented.append(fast)
+
+    return augmented
+
+X_aug, y_aug = [], []
+for i in range(len(X)):
+    extras = augment(X[i])
+    for ex in extras:
+        X_aug.append(ex)
+        y_aug.append(y[i])
+
+X = np.concatenate([X, np.array(X_aug)])
+y = np.concatenate([y, np.array(y_aug)])
+
+np.save("X_augemented.npy", X)
+np.save("Y_augemented.npy", y)
+
+print(f"  Total samples after augmentation: {len(X)}")
+
+# ─────────────────────────────────────────
+#  Step 4 — Split data
+# ─────────────────────────────────────────
 X_trainval, X_test, y_trainval, y_test = train_test_split(
     X, y, test_size=0.10, random_state=42, stratify=y
 )
@@ -87,15 +123,15 @@ y_train_cat = to_categorical(y_train, num_classes)
 y_val_cat   = to_categorical(y_val,   num_classes)
 y_test_cat  = to_categorical(y_test,  num_classes)
 
-
-#  Step 4 — Build model
-
+# ─────────────────────────────────────────
+#  Step 5 — Build model
+# ─────────────────────────────────────────
 print("\nBuilding model...")
 
 model = Sequential([
-    LSTM(64, return_sequences=True, input_shape=(FRAMES_COUNT, 63)),
+    LSTM(128, return_sequences=True, input_shape=(FRAMES_COUNT, 63)),
     Dropout(0.3),
-    LSTM(32, return_sequences=False),
+    LSTM(64, return_sequences=False),
     Dropout(0.3),
     Dense(64, activation="relu"),
     Dropout(0.3),
@@ -110,9 +146,9 @@ model.compile(
 
 model.summary()
 
-
-#  Step 5 — Train
-
+# ─────────────────────────────────────────
+#  Step 6 — Train
+# ─────────────────────────────────────────
 print("\nTraining started...")
 
 callbacks = [
@@ -131,8 +167,9 @@ history = model.fit(
     verbose=1
 )
 
-#  Step 6 — Evaluate on test set
-
+# ─────────────────────────────────────────
+#  Step 7 — Evaluate on test set
+# ─────────────────────────────────────────
 print("\nFinal Results:")
 
 test_loss, test_acc = model.evaluate(X_test, y_test_cat, verbose=0)
@@ -143,15 +180,15 @@ y_pred = np.argmax(model.predict(X_test), axis=1)
 print("\nDetailed report:")
 print(classification_report(y_test, y_pred, target_names=WORDS))
 
-
-#  Step 7 — Save model
-
+# ─────────────────────────────────────────
+#  Step 8 — Save model
+# ─────────────────────────────────────────
 model.save(MODEL_PATH)
 print(f"\nModel saved: {MODEL_PATH}")
 
-
-#  Step 8 — Plot results
-
+# ─────────────────────────────────────────
+#  Step 9 — Plot results
+# ─────────────────────────────────────────
 fig, axes = plt.subplots(1, 3, figsize=(18, 5))
 
 axes[0].plot(history.history["accuracy"],     label="Train")
