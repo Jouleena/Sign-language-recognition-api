@@ -21,9 +21,9 @@ FRAMES_COUNT = 60
 EPOCHS       = 50
 BATCH_SIZE   = 16
 
-# ─────────────────────────────────────────
+
 #  Step 1 — Load data
-# ─────────────────────────────────────────
+
 print("Loading data...")
 
 WORDS     = sorted(os.listdir(DATASET_PATH))
