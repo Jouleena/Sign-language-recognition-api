@@ -66,45 +66,9 @@ for i in range(len(X)):
 
 print("  Normalization done")
 
-# ─────────────────────────────────────────
-#  Step 3 — Augmentation
-# ─────────────────────────────────────────
-def augment(sequence):
-    augmented = []
-
-    # Gaussian Noise — simulates natural hand shakiness
-    noise = np.random.normal(0, 0.005, sequence.shape)
-    augmented.append(sequence + noise)
-
-    # Hand Flip — simulates left hand
-    flipped           = sequence.copy()
-    flipped[:, 0::3]  = -flipped[:, 0::3]
-    augmented.append(flipped)
-
-    # Time Scaling — simulates faster signing
-    fast = sequence[::2]
-    fast = np.resize(fast, sequence.shape)
-    augmented.append(fast)
-
-    return augmented
-
-X_aug, y_aug = [], []
-for i in range(len(X)):
-    extras = augment(X[i])
-    for ex in extras:
-        X_aug.append(ex)
-        y_aug.append(y[i])
-
-X = np.concatenate([X, np.array(X_aug)])
-y = np.concatenate([y, np.array(y_aug)])
-
-np.save("X_augemented.npy", X)
-np.save("Y_augemented.npy", y)
-
-print(f"  Total samples after augmentation: {len(X)}")
 
 # ─────────────────────────────────────────
-#  Step 4 — Split data
+#  Step 3 — Split data
 # ─────────────────────────────────────────
 X_trainval, X_test, y_trainval, y_test = train_test_split(
     X, y, test_size=0.10, random_state=42, stratify=y
@@ -117,6 +81,45 @@ print(f"\nData split:")
 print(f"  Train:      {len(X_train)} samples (~70%)")
 print(f"  Validation: {len(X_val)}  samples (~20%)")
 print(f"  Test:       {len(X_test)}  samples (~10%)")
+
+
+# ─────────────────────────────────────────
+#  Step 3 — Augmentation
+# ─────────────────────────────────────────
+def augment(sequence):
+    augmented = []
+
+    # Gaussian Noise — simulates natural hand shakiness
+    noise = np.random.normal(0, 0.005, sequence.shape)
+    augmented.append(sequence + noise)
+
+    # # Hand Flip — simulates left hand
+    # flipped           = sequence.copy()
+    # flipped[:, 0::3]  = -flipped[:, 0::3]
+    # augmented.append(flipped)
+
+    # Time Scaling — simulates faster signing
+    fast = sequence[::2]
+    fast = np.resize(fast, sequence.shape)
+    augmented.append(fast)
+
+    return augmented
+
+X_aug, y_aug = [], []
+for i in range(len(X_train)):
+    extras = augment(X_train[i])
+    for ex in extras:
+        X_aug.append(ex)
+        y_aug.append(y_train[i])
+
+X = np.concatenate([X_train, np.array(X_aug)])
+y = np.concatenate([y_train, np.array(y_aug)])
+
+np.save("X_augemented.npy", X)
+np.save("Y_augemented.npy", y)
+
+print(f"  Total samples after augmentation: {len(X)}")
+
 
 num_classes = len(WORDS)
 y_train_cat = to_categorical(y_train, num_classes)

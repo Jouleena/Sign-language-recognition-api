@@ -6,7 +6,7 @@ import time
 
 #  Settings
 
-WORDS        = ["hello", "thank_you", "yes", "no" , "water"]
+WORDS        = ["please", "thank_you"]
 VIDEOS_COUNT = 35
 FRAMES_COUNT = 60
 DATASET_PATH = "dataset"
