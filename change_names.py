@@ -1,8 +1,8 @@
 import os
 
-root = "dataset"
+root = "dataset1"
 
-start_number = 35
+start_number = 70
 
 for word in os.listdir(root):
     folder = os.path.join(root, word)
