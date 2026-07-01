@@ -171,17 +171,33 @@ history = model.fit(
 )
 
 # ─────────────────────────────────────────
-#  Step 7 — Evaluate on test set
+#  Step 7 — Evaluate on validation set AND test set
 # ─────────────────────────────────────────
-print("\nFinal Results:")
+print("\n" + "="*50)
+print("FINAL RESULTS")
+print("="*50)
 
+# ---- Validation evaluation ----
+val_loss, val_acc = model.evaluate(X_val, y_val_cat, verbose=0)
+y_val_pred = np.argmax(model.predict(X_val), axis=1)
+val_exact_acc = np.mean(y_val_pred == y_val) * 100
+
+print(f"\n[VALIDATION SET]")
+print(f"  Validation Accuracy: {val_exact_acc:.2f}%  ({np.sum(y_val_pred == y_val)}/{len(y_val)} correct)")
+print(f"  Validation Loss:     {val_loss:.4f}")
+print("\n  Detailed report (Validation):")
+print(classification_report(y_val, y_val_pred, target_names=WORDS))
+
+# ---- Test evaluation ----
 test_loss, test_acc = model.evaluate(X_test, y_test_cat, verbose=0)
-print(f"  Test Accuracy: {test_acc * 100:.2f}%")
-print(f"  Test Loss:     {test_loss:.4f}")
+y_test_pred = np.argmax(model.predict(X_test), axis=1)
+test_exact_acc = np.mean(y_test_pred == y_test) * 100
 
-y_pred = np.argmax(model.predict(X_test), axis=1)
-print("\nDetailed report:")
-print(classification_report(y_test, y_pred, target_names=WORDS))
+print(f"\n[TEST SET]")
+print(f"  Test Accuracy: {test_exact_acc:.2f}%  ({np.sum(y_test_pred == y_test)}/{len(y_test)} correct)")
+print(f"  Test Loss:     {test_loss:.4f}")
+print("\n  Detailed report (Test):")
+print(classification_report(y_test, y_test_pred, target_names=WORDS))
 
 # ─────────────────────────────────────────
 #  Step 8 — Save model
@@ -190,30 +206,69 @@ model.save(MODEL_PATH)
 print(f"\nModel saved: {MODEL_PATH}")
 
 # ─────────────────────────────────────────
-#  Step 9 — Plot results
+#  Step 9 — Figure 1: Training & Validation Curves (Accuracy + Loss)
 # ─────────────────────────────────────────
-fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+fig, axes = plt.subplots(1, 2, figsize=(14, 5))
 
 axes[0].plot(history.history["accuracy"],     label="Train")
 axes[0].plot(history.history["val_accuracy"], label="Validation")
-axes[0].set_title("Accuracy")
+axes[0].set_title("Training & Validation Accuracy")
 axes[0].set_xlabel("Epoch")
+axes[0].set_ylabel("Accuracy")
 axes[0].legend()
+axes[0].grid(alpha=0.3)
 
 axes[1].plot(history.history["loss"],     label="Train")
 axes[1].plot(history.history["val_loss"], label="Validation")
-axes[1].set_title("Loss")
+axes[1].set_title("Training & Validation Loss")
 axes[1].set_xlabel("Epoch")
+axes[1].set_ylabel("Loss")
 axes[1].legend()
+axes[1].grid(alpha=0.3)
 
-cm = confusion_matrix(y_test, y_pred)
-sns.heatmap(cm, annot=True, fmt="d", xticklabels=WORDS,
-            yticklabels=WORDS, ax=axes[2], cmap="Blues")
-axes[2].set_title("Confusion Matrix")
-axes[2].set_xlabel("Predicted")
-axes[2].set_ylabel("Actual")
-
+fig.suptitle(f"Training Curves  |  Final Validation Accuracy: {val_exact_acc:.2f}%", fontsize=13)
 plt.tight_layout()
-plt.savefig("training_results.png", dpi=150)
+plt.savefig("1_training_curves.png", dpi=150)
 plt.show()
-print("Results saved: training_results.png")
+print("\nSaved: 1_training_curves.png")
+
+# ─────────────────────────────────────────
+#  Step 10 — Figure 2: Validation Confusion Matrix
+# ─────────────────────────────────────────
+cm_val = confusion_matrix(y_val, y_val_pred)
+
+plt.figure(figsize=(8, 6))
+sns.heatmap(cm_val, annot=True, fmt="d", xticklabels=WORDS,
+            yticklabels=WORDS, cmap="Blues")
+plt.title(f"Validation Confusion Matrix — Accuracy: {val_exact_acc:.2f}% "
+          f"({np.sum(y_val_pred == y_val)}/{len(y_val)})")
+plt.xlabel("Predicted")
+plt.ylabel("Actual")
+plt.tight_layout()
+plt.savefig("2_validation_confusion_matrix.png", dpi=150)
+plt.show()
+print("Saved: 2_validation_confusion_matrix.png")
+
+# ─────────────────────────────────────────
+#  Step 11 — Figure 3: Test Confusion Matrix
+# ─────────────────────────────────────────
+cm_test = confusion_matrix(y_test, y_test_pred)
+
+plt.figure(figsize=(8, 6))
+sns.heatmap(cm_test, annot=True, fmt="d", xticklabels=WORDS,
+            yticklabels=WORDS, cmap="Greens")
+plt.title(f"Test Confusion Matrix — Accuracy: {test_exact_acc:.2f}% "
+          f"({np.sum(y_test_pred == y_test)}/{len(y_test)})")
+plt.xlabel("Predicted")
+plt.ylabel("Actual")
+plt.tight_layout()
+plt.savefig("3_test_confusion_matrix.png", dpi=150)
+plt.show()
+print("Saved: 3_test_confusion_matrix.png")
+
+print("\n" + "="*50)
+print("SUMMARY")
+print("="*50)
+print(f"  Validation Accuracy: {val_exact_acc:.2f}%")
+print(f"  Test Accuracy:       {test_exact_acc:.2f}%")
+print("="*50)
