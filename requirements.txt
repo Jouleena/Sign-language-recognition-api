@@ -1,4 +1,4 @@
-tensorflow>=2.15.0,<2.17.0
+tensorflow
 mediapipe
 numpy
 scikit-learn
