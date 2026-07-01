@@ -18,8 +18,8 @@ DATASET_PATH = "dataset"
 MODEL_PATH   = "model.h5"
 LABELS_PATH  = "labels.json"
 FRAMES_COUNT = 60
-EPOCHS       = 50
-BATCH_SIZE   = 16
+EPOCHS       = 70
+BATCH_SIZE   = 10
 
 
 #  Step 1 — Load data

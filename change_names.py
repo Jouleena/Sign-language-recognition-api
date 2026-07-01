@@ -2,7 +2,7 @@ import os
 
 root = "dataset1"
 
-start_number = 70
+start_number = 40
 
 for word in os.listdir(root):
     folder = os.path.join(root, word)

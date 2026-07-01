@@ -6,7 +6,7 @@ import time
 
 #  Settings
 
-WORDS        = ["friend","forever","enemy"]
+WORDS        = ["book1","less1","more1","phone1","read1","write1"]
 VIDEOS_COUNT = 40
 FRAMES_COUNT = 60
 DATASET_PATH = "dataset"
