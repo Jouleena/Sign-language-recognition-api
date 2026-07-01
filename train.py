@@ -43,7 +43,7 @@ for word in WORDS:
     for file in files:
         sequence = np.load(os.path.join(word_path, file))
 
-        if sequence.shape == (FRAMES_COUNT, 63):
+        if sequence.shape == (FRAMES_COUNT, 126):
             X.append(sequence)
             y.append(label_map[word])
         else:
@@ -55,14 +55,28 @@ y = np.array(y)
 print(f"  Total samples before augmentation: {len(X)}")
 
 # ─────────────────────────────────────────
-#  Step 2 — Normalize landmarks
+#  Step 2 — Normalize landmarks (per hand, wrist-relative)
 # ─────────────────────────────────────────
+# Layout per frame: [0:63] = Hand 1, [63:126] = Hand 2
+# Each hand is normalized against its OWN wrist (landmark 0).
+# If a hand slot is all zeros (hand not present in that frame),
+# it is left untouched — subtracting would just create fake
+# non-zero "phantom hand" values out of nothing.
+HAND_DIM = 63
+
 for i in range(len(X)):
     for f in range(FRAMES_COUNT):
-        wrist           = X[i, f, :3].copy()
-        X[i, f, 0::3] -= wrist[0]
-        X[i, f, 1::3] -= wrist[1]
-        X[i, f, 2::3] -= wrist[2]
+        for h_start in (0, HAND_DIM):
+            h_end = h_start + HAND_DIM
+            hand = X[i, f, h_start:h_end]
+
+            if not np.any(hand):
+                continue  # hand not detected in this frame -> keep zeros
+
+            wrist = hand[:3].copy()
+            X[i, f, h_start + 0:h_end:3] -= wrist[0]
+            X[i, f, h_start + 1:h_end:3] -= wrist[1]
+            X[i, f, h_start + 2:h_end:3] -= wrist[2]
 
 print("  Normalization done")
 
@@ -93,7 +107,11 @@ def augment(sequence):
     noise = np.random.normal(0, 0.005, sequence.shape)
     augmented.append(sequence + noise)
 
-    # # Hand Flip — simulates left hand
+    # Hand Flip — DISABLED. If re-enabled, must be updated for the new
+    # 126-dim two-hand layout: flip x for BOTH hand slots (0::3 within
+    # [0:63] and within [63:126]) AND swap the two 63-value slots,
+    # since a horizontal flip turns "Hand 1 on the left" into
+    # "Hand 1 on the right" from the camera's point of view.
     # flipped           = sequence.copy()
     # flipped[:, 0::3]  = -flipped[:, 0::3]
     # augmented.append(flipped)
@@ -132,7 +150,7 @@ y_test_cat  = to_categorical(y_test,  num_classes)
 print("\nBuilding model...")
 
 model = Sequential([
-    LSTM(128, return_sequences=True, input_shape=(FRAMES_COUNT, 63)),
+    LSTM(128, return_sequences=True, input_shape=(FRAMES_COUNT, 126)),
     Dropout(0.3),
     LSTM(64, return_sequences=False),
     Dropout(0.3),

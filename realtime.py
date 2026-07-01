@@ -33,7 +33,7 @@ mp_hands   = mp.solutions.hands
 mp_drawing = mp.solutions.drawing_utils
 hands      = mp_hands.Hands(
     static_image_mode=False,
-    max_num_hands=1,
+    max_num_hands=2,
     min_detection_confidence=0.7,
     min_tracking_confidence=0.7
 )
@@ -43,29 +43,41 @@ hands      = mp_hands.Hands(
 
 def extract_landmarks(frame):
     """
-    Returns normalized array of shape (63,)
-    Returns zeros if no hand detected
+    Returns normalized array of shape (126,) = 2 hand slots x 21 x 3
+    Slots: [0:63]   = Hand 1 (first hand MediaPipe detects, zeros if none)
+           [63:126] = Hand 2 (second hand MediaPipe detects, zeros if none)
+    Each hand is normalized against its OWN wrist (landmark 0).
+    A hand slot that's not detected is left as zeros (no fake normalization).
+
+    Also returns the list of raw hand_landmarks (for drawing), or None.
     """
     rgb    = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     result = hands.process(rgb)
 
+    hand1 = np.zeros(63)
+    hand2 = np.zeros(63)
+
     if result.multi_hand_landmarks:
-        hand      = result.multi_hand_landmarks[0]
-        landmarks = []
-        for lm in hand.landmark:
-            landmarks.extend([lm.x, lm.y, lm.z])
+        for i, hand_landmarks in enumerate(result.multi_hand_landmarks[:2]):
+            coords = []
+            for lm in hand_landmarks.landmark:
+                coords.extend([lm.x, lm.y, lm.z])
+            coords = np.array(coords)
 
-        landmarks = np.array(landmarks)
+            # Normalize this hand against its own wrist
+            wrist = coords[:3].copy()
+            coords[0::3] -= wrist[0]
+            coords[1::3] -= wrist[1]
+            coords[2::3] -= wrist[2]
 
-        # Normalize: subtract wrist position
-        wrist         = landmarks[:3].copy()
-        landmarks[0::3] -= wrist[0]
-        landmarks[1::3] -= wrist[1]
-        landmarks[2::3] -= wrist[2]
+            if i == 0:
+                hand1 = coords
+            else:
+                hand2 = coords
 
-        return landmarks, result.multi_hand_landmarks[0]
+        return np.concatenate([hand1, hand2]), result.multi_hand_landmarks
     else:
-        return np.zeros(63), None
+        return np.concatenate([hand1, hand2]), None
 
 
 #  Draw prediction UI
@@ -135,16 +147,17 @@ while True:
     frame = cv2.flip(frame, 1)
 
     # Extract landmarks
-    landmarks, hand_lms = extract_landmarks(frame)
-    hand_detected       = hand_lms is not None
+    landmarks, hands_lms = extract_landmarks(frame)
+    hand_detected        = hands_lms is not None
 
-    # Draw hand skeleton
-    if hand_lms:
-        mp_drawing.draw_landmarks(
-            frame, hand_lms, mp_hands.HAND_CONNECTIONS,
-            mp_drawing.DrawingSpec(color=(0, 255, 255), thickness=2, circle_radius=3),
-            mp_drawing.DrawingSpec(color=(0, 180, 255), thickness=2)
-        )
+    # Draw hand skeleton(s)
+    if hands_lms:
+        for hand_lms in hands_lms:
+            mp_drawing.draw_landmarks(
+                frame, hand_lms, mp_hands.HAND_CONNECTIONS,
+                mp_drawing.DrawingSpec(color=(0, 255, 255), thickness=2, circle_radius=3),
+                mp_drawing.DrawingSpec(color=(0, 180, 255), thickness=2)
+            )
 
     # Add to sequence buffer
     sequence.append(landmarks)
@@ -155,7 +168,7 @@ while True:
 
     # Predict when buffer is full
     if len(sequence) == FRAMES_COUNT:
-        input_data = np.expand_dims(sequence, axis=0)  # shape (1, 30, 63)
+        input_data = np.expand_dims(sequence, axis=0)  # shape (1, FRAMES_COUNT, 126)
         predictions = model.predict(input_data, verbose=0)[0]
         print(f"Predictions: {predictions}")
         predicted_idx  = np.argmax(predictions)

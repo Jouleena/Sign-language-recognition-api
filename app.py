@@ -14,7 +14,9 @@ with open("labels.json") as f:
 idx_to_label = {v: k for k, v in labels.items()}
 
 class InputData(BaseModel):
-    sequence:List[List[float]]  # List of 60 frames, each with 63 landmarks (x,y,z for 21 points)
+    sequence: List[List[float]]  # List of FRAMES_COUNT frames, each with 126 values
+                                  # (2 hand slots x 21 landmarks x [x,y,z]).
+                                  # Hand slot with no detected hand = all zeros.
 
 @app.post("/predict")
 def predict(data: InputData):   

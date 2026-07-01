@@ -6,8 +6,8 @@ import time
 
 #  Settings
 
-WORDS        = ["dream", "water","no"]
-VIDEOS_COUNT = 15
+WORDS        = ["friend","forever","enemy"]
+VIDEOS_COUNT = 40
 FRAMES_COUNT = 60
 DATASET_PATH = "dataset"
 
@@ -32,22 +32,46 @@ hands      = mp_hands.Hands(
 
 #  Extract landmarks from a frame
 
-def extract_landmarks(frame):
+def extract_landmarks(frame, draw=False):
     """
-    Returns array of shape (63,) = 21 landmarks x 3 (x, y, z)
-    Returns zeros if no hand detected
+    Returns array of shape (126,) = 2 hand slots x 21 landmarks x 3 (x, y, z)
+    Slots: [0:63]   = Hand 1 (first hand MediaPipe detects, zeros if none)
+           [63:126] = Hand 2 (second hand MediaPipe detects, zeros if none)
+
+    - If only one hand is visible, Hand 2 slot stays zeros.
+    - If two hands are visible, both slots are filled.
+    - Every frame is evaluated independently (a hand can appear/disappear
+      mid-video with no issue).
+    - No Left/Right distinction is used (matches the flip augmentation
+      already applied during training, which treats hand identity as
+      symmetric).
+
+    If draw=True, also draws the detected hand landmarks on `frame` in place.
     """
     rgb    = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     result = hands.process(rgb)
 
+    hand1 = np.zeros(63)
+    hand2 = np.zeros(63)
+
     if result.multi_hand_landmarks:
-        hand      = result.multi_hand_landmarks[0]
-        landmarks = []
-        for lm in hand.landmark:
-            landmarks.extend([lm.x, lm.y, lm.z])
-        return np.array(landmarks)
-    else:
-        return np.zeros(63)
+        for i, hand_landmarks in enumerate(result.multi_hand_landmarks[:2]):
+            if draw:
+                mp_drawing.draw_landmarks(
+                    frame, hand_landmarks, mp_hands.HAND_CONNECTIONS
+                )
+
+            coords = []
+            for lm in hand_landmarks.landmark:
+                coords.extend([lm.x, lm.y, lm.z])
+            coords = np.array(coords)
+
+            if i == 0:
+                hand1 = coords
+            else:
+                hand2 = coords
+
+    return np.concatenate([hand1, hand2])
 
 
 #  Draw UI on frame
@@ -130,17 +154,7 @@ for word in WORDS:
                 if not ret:
                     break
                 frame  = cv2.flip(frame, 1)
-                rgb    = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                result = hands.process(rgb)
-
-                if result.multi_hand_landmarks:
-                    mp_drawing.draw_landmarks(
-                        frame,
-                        result.multi_hand_landmarks[0],
-                        mp_hands.HAND_CONNECTIONS
-                    )
-
-                landmarks = extract_landmarks(frame)
+                landmarks = extract_landmarks(frame, draw=True)
                 sequence.append(landmarks)
 
                 progress = int((frame_num + 1) / FRAMES_COUNT * 200)
